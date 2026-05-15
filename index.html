@@ -20,7 +20,7 @@
   <div id="result"></div>
 
   <script>
-    const API_KEY = "AIzaSyBp0thrqF8tw8sRXV0NCu00jS_owRzisfg";   // твій ключ
+    const API_KEY = "AIzaSyA9JaDMQ25csFr3OOrl-NmuM4wEcMykKtk";   // ← встав новий!
 
     async function sendPrompt() {
       const promptText = document.getElementById("prompt").value.trim();
@@ -40,16 +40,14 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [{ 
-                parts: [{ text: promptText }] 
-              }]
+              contents: [{ parts: [{ text: promptText }] }]
             })
           }
         );
 
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Помилка ${response.status}: ${errorText}`);
+          const err = await response.json();
+          throw new Error(err.error?.message || response.status);
         }
 
         const data = await response.json();
