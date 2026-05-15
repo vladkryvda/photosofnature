@@ -19,8 +19,8 @@
 
   <div id="result"></div>
 
-  <script type="module">
-    const API_KEY = "AIzaSyBpOthrqF8tw8sRXV0NCuO0jS_owRzisfg";   // ← обов'язково заміни!
+  <script>
+    const API_KEY = "AIzaSyBp0thrqF8tw8sRXV0NCu00jS_owRzisfg";   // твій ключ
 
     async function sendPrompt() {
       const promptText = document.getElementById("prompt").value.trim();
@@ -46,18 +46,13 @@
         );
 
         if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+          throw new Error(`Помилка ${response.status}`);
         }
 
         const data = await response.json();
-        
-        if (data.candidates && data.candidates[0]) {
-          const text = data.candidates[0].content.parts[0].text;
-          resultDiv.textContent = text;
-        } else {
-          resultDiv.textContent = "Помилка: немає відповіді від Gemini";
-          console.error(data);
-        }
+        const text = data.candidates[0].content.parts[0].text;
+        resultDiv.textContent = text;
+
       } catch (error) {
         console.error(error);
         resultDiv.innerHTML = `<span class="error">Помилка: ${error.message}</span>`;
