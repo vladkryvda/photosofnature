@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>AI в бібліотеці</title>
+  <style>
+    body { font-family: Arial; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.5; }
+    textarea { width: 100%; height: 180px; font-size: 16px; }
+    button { padding: 12px 24px; font-size: 17px; margin-top: 10px; }
+    #result { margin-top: 25px; padding: 20px; background: #f0f0f0; border-radius: 8px; min-height: 100px; }
+  </style>
+</head>
+<body>
+  <h1>AI Помічник для бібліотеки</h1>
+  <p>Працює через Gemini (безкоштовно)</p>
+
+  <textarea id="prompt" placeholder="Напиши свій запит або код..."></textarea><br>
+  <button onclick="send()">Надіслати</button>
+
+  <div id="result"></div>
+
+  <script>
+    const API_KEY = "ВСТАВ_СЮДИ_СВІЙ_GEMINI_KEY";   // ← заміни
+
+    async function send() {
+      const prompt = document.getElementById("prompt").value;
+      const result = document.getElementById("result");
+      result.textContent = "Думаю...";
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        });
+        const data = await res.json();
+        result.textContent = data.candidates[0].content.parts[0].text;
+      } catch(e) {
+        result.textContent = "Помилка: " + e.message;
+      }
+    }
+  </script>
+</body>
+</html>
