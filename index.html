@@ -4,7 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Proxy</title>
+  
+  <!-- Кольорова мінімалістична іконка (Favicon) у вигляді зірки (SVG) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 64,36 98,36 70,57 81,91 50,70 19,91 30,57 2,36 36,36' fill='%234a9eff'/%3E%3C/svg%3E" />
+  
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  
+  <!-- Підключаємо бібліотеку для рендерингу Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -29,7 +37,6 @@
       overflow-x: hidden;
     }
 
-    /* Анімація зірок на Canvas */
     canvas {
       position: fixed;
       top: 0;
@@ -53,7 +60,7 @@
 
     textarea {
       width: 100%;
-      min-height: 120px;
+      min-height: 110px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -131,26 +138,59 @@
       cursor: not-allowed;
     }
 
-    .response-box {
+    /* Вікно історії та відповідей */
+    .history-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 450px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    /* Стилі для Markdown елементів всередині блоків */
+    .chat-block {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      min-height: 150px;
-      padding: 20px;
+      padding: 18px;
       font-size: 0.9rem;
       line-height: 1.7;
-      white-space: pre-wrap;
-      word-break: break-word;
-      transition: border-color 0.4s;
     }
 
-    .response-box.active {
-      border-color: rgba(255, 255, 255, 0.15);
+    .chat-block.user {
+      border-color: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.02);
+      color: #b0b0bf;
     }
 
-    .placeholder-text {
-      color: var(--muted);
+    .chat-block.model {
+      border-color: rgba(74, 158, 255, 0.15);
     }
+
+    /* Налаштування стилів відображення Markdown */
+    .chat-block pre {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .chat-block code {
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    .chat-block pre code {
+      background: none;
+      padding: 0;
+    }
+    .chat-block p { margin-bottom: 8px; }
+    .chat-block p:last-child { margin-bottom: 0; }
+    .chat-block ul, .chat-block ol { margin-left: 20px; margin-bottom: 8px; }
 
     .error-msg {
       display: none;
@@ -163,8 +203,13 @@
     }
     .error-msg.visible { display: block; }
 
-    .copy-btn {
-      align-self: flex-end;
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .action-btn {
       background: none;
       border: none;
       color: var(--muted);
@@ -173,9 +218,13 @@
       cursor: pointer;
       transition: color 0.2s;
       padding: 4px 0;
-      width: fit-content;
     }
-    .copy-btn:hover { color: var(--text); }
+    .action-btn:hover { color: var(--text); }
+
+    /* Скролбар */
+    .history-container::-webkit-scrollbar { width: 4px; }
+    .history-container::-webkit-scrollbar-track { background: transparent; }
+    .history-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -184,7 +233,7 @@
 
 <div class="container">
 
-  <!-- Ввід -->
+  <!-- Поле вводу -->
   <textarea id="user-input" placeholder="Запит..."></textarea>
   
   <div class="controls">
@@ -197,161 +246,193 @@
   <!-- Помилка -->
   <div class="error-msg" id="error-msg"></div>
 
-  <!-- Відповідь -->
-  <div class="response-box" id="response-box">
-    <span class="placeholder-text" id="placeholder">Чекаю...</span>
-  </div>
+  <!-- Область виведення історії (тут працює автосейв і Markdown) -->
+  <div class="history-container" id="history-container"></div>
   
-  <button class="copy-btn" id="copy-btn" style="display: none;">копіювати</button>
+  <div class="action-row">
+    <button class="action-btn" id="clear-btn">очистити історію</button>
+    <button class="action-btn" id="copy-btn" style="display: none;">копіювати останнє</button>
+  </div>
 
 </div>
 
 <script>
-  // --- Ефект зірок (Canvas) ---
+  // --- ЗОРЯНЕ НЕБО (Canvas) ---
   const canvas = document.getElementById('stars');
   const ctx = canvas.getContext('2d');
-
   let width = canvas.width = window.innerWidth;
   let height = canvas.height = window.innerHeight;
-
   const numStars = 120;
   const stars = [];
   let mouse = { x: null, y: null, radius: 70 };
 
   for (let i = 0; i < numStars; i++) {
     stars.push({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      size: Math.random() * 1.5,
-      baseX: 0,
-      baseY: 0,
-      density: (Math.random() * 15) + 5,
-      speed: (Math.random() * 0.05) + 0.01
+      x: Math.random() * width, y: Math.random() * height,
+      size: Math.random() * 1.5, baseX: 0, baseY: 0,
+      density: (Math.random() * 15) + 5, speed: (Math.random() * 0.05) + 0.01
     });
   }
-
-  window.addEventListener('resize', () => {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    mouse.x = e.x;
-    mouse.y = e.y;
-  });
-
-  window.addEventListener('mouseleave', () => {
-    mouse.x = null;
-    mouse.y = null;
-  });
+  window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
+  window.addEventListener('mousemove', (e) => { mouse.x = e.x; mouse.y = e.y; });
+  window.addEventListener('mouseleave', () => { mouse.x = null; mouse.y = null; });
 
   function animateStars() {
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     for (let i = 0; i < stars.length; i++) {
       let star = stars[i];
-      
-      // Повільний рух вгору
       star.y -= star.speed;
-      if (star.y < 0) {
-        star.y = height;
-        star.x = Math.random() * width;
-      }
-
-      // Інтерактив з мишкою (зірки злегка тікають)
+      if (star.y < 0) { star.y = height; star.x = Math.random() * width; }
       if (mouse.x !== null && mouse.y !== null) {
-        let dx = mouse.x - star.x;
-        let dy = mouse.y - star.y;
+        let dx = mouse.x - star.x; let dy = mouse.y - star.y;
         let distance = Math.hypot(dx, dy);
-        
         if (distance < mouse.radius) {
           let force = (mouse.radius - distance) / mouse.radius;
-          let directionX = dx / distance;
-          let directionY = dy / distance;
-          
-          star.x -= directionX * force * star.density * 0.2;
-          star.y -= directionY * force * star.density * 0.2;
+          star.x -= (dx / distance) * force * star.density * 0.2;
+          star.y -= (dy / distance) * force * star.density * 0.2;
         }
       }
-
-      ctx.beginPath();
-      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2); ctx.fill();
     }
     requestAnimationFrame(animateStars);
   }
   animateStars();
 
+  // --- ЛОГІКА ЧАТУ ТА АВТОЗБЕРЕЖЕННЯ ---
+  // Пряме посилання на ваш Cloudflare Worker
+  const BACKEND_URL = 'https://photosofnature.enotik6665.workers.dev/'; 
 
-  // --- Логіка запитів (Фіксовано під Gemini) ---
-  let responseText = '';
-  const currentModel = 'gemini-3-flash'; // Жорстко зафіксована модель Gemini
+  const userInput = document.getElementById('user-input');
+  const historyContainer = document.getElementById('history-container');
+  const sendBtn = document.getElementById('send-btn');
+  const loader = document.getElementById('loader');
+  const errorMsg = document.getElementById('error-msg');
+  const copyBtn = document.getElementById('copy-btn');
+  const clearBtn = document.getElementById('clear-btn');
 
-  document.getElementById('send-btn').addEventListener('click', sendRequest);
-  document.getElementById('user-input').addEventListener('keydown', e => {
+  // Завантажуємо історію чату з localStorage
+  let chatHistory = JSON.parse(localStorage.getItem('proxy_chat_history')) || [];
+  let lastResponseText = '';
+
+  // Ініціалізація та відновлення стану при завантаженні сторінки
+  document.addEventListener('DOMContentLoaded', () => {
+    // Відновлюємо текст запиту, який користувач не встиг надіслати
+    userInput.value = localStorage.getItem('proxy_current_input') || '';
+    renderHistory();
+  });
+
+  // Автозбереження вводу під час написання тексту
+  userInput.addEventListener('input', () => {
+    localStorage.setItem('proxy_current_input', userInput.value);
+  });
+
+  // Відправка по Enter
+  userInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendRequest();
     }
   });
 
+  sendBtn.addEventListener('click', sendRequest);
+
   async function sendRequest() {
-    const input = document.getElementById('user-input').value.trim();
-    if (!input) return;
+    const query = userInput.value.trim();
+    if (!query) return;
 
-    const btn = document.getElementById('send-btn');
-    const loader = document.getElementById('loader');
-    const responseBox = document.getElementById('response-box');
-    const placeholder = document.getElementById('placeholder');
-    const errorMsg = document.getElementById('error-msg');
-    const copyBtn = document.getElementById('copy-btn');
-
-    btn.disabled = true;
+    // Блокуємо інтерфейс
+    sendBtn.disabled = true;
     loader.classList.add('visible');
     errorMsg.classList.remove('visible');
-    responseBox.classList.add('active');
-    copyBtn.style.display = 'none';
-    if (placeholder) placeholder.style.display = 'none';
+
+    // Одразу додаємо запит користувача в історію локально
+    chatHistory.push({ role: 'user', text: query });
+    renderHistory();
     
-    responseBox.textContent = '';
-    responseText = '';
+    // Очищуємо поле вводу та чернетку в localStorage
+    userInput.value = '';
+    localStorage.removeItem('proxy_current_input');
 
     try {
-      // Зверніть увагу: шлях змінено на ваш поточний проксі-ендпоінт /api/proxy
-      const res = await fetch('https://photosofnature.enotik6665.workers.dev/', {
+      const res = await fetch(BACKEND_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, model: currentModel })
+        body: JSON.stringify({ message: query })
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Помилка сервера');
 
-      if (!res.ok) throw new Error(data.error || 'Помилка отримання відповіді');
+      lastResponseText = data.reply || '';
 
-      // Обробка ключа reply або text залежно від архітектури вашого бекенду
-      responseText = data.reply || data.text || '';
-      responseBox.textContent = responseText;
-      if (responseText) copyBtn.style.display = 'block';
+      // Додаємо відповідь ШІ в історію
+      chatHistory.push({ role: 'model', text: lastResponseText });
+      
+      // Зберігаємо оновлену історію в браузері (Автосейв)
+      localStorage.setItem('proxy_chat_history', JSON.stringify(chatHistory));
+      
+      renderHistory();
 
     } catch (err) {
       errorMsg.textContent = 'Помилка: ' + err.message;
       errorMsg.classList.add('visible');
-      responseBox.classList.remove('active');
-      if (placeholder) placeholder.style.display = 'block';
+      // Якщо сталася помилка, повертаємо текст у поле вводу, щоб не переписувати
+      userInput.value = query;
+      localStorage.setItem('proxy_current_input', query);
     } finally {
-      btn.disabled = false;
+      sendBtn.disabled = false;
       loader.classList.remove('visible');
     }
   }
 
-  // --- Копіювати ---
-  document.getElementById('copy-btn').addEventListener('click', () => {
-    if (!responseText) return;
-    navigator.clipboard.writeText(responseText);
-    const btn = document.getElementById('copy-btn');
-    btn.textContent = 'скопійовано';
-    setTimeout(() => btn.textContent = 'копіювати', 2000);
+  // --- РЕНДЕРИНГ ІСТОРІЇ (MARKDOWN) ---
+  function renderHistory() {
+    historyContainer.innerHTML = '';
+    
+    if (chatHistory.length === 0) {
+      historyContainer.innerHTML = '<div class="chat-block" style="color:var(--muted); text-align:center; border:none;">Історія порожня. Задайте перше питання...</div>';
+      copyBtn.style.display = 'none';
+      return;
+    }
+
+    chatHistory.forEach(item => {
+      const block = document.createElement('div');
+      block.className = `chat-block ${item.role}`;
+      
+      if (item.role === 'model') {
+        // Рендеримо текст через бібліотеку Markdown (marked)
+        block.innerHTML = marked.parse(item.text);
+        lastResponseText = item.text; // оновлюємо для кнопки копіювання
+      } else {
+        // Текст користувача відображаємо як звичайний текст
+        block.textContent = item.text;
+      }
+      
+      historyContainer.appendChild(block);
+    });
+
+    // Скролимо до найсвіжішої відповіді
+    historyContainer.scrollTop = historyContainer.scrollHeight;
+    copyBtn.style.display = 'block';
+  }
+
+  // --- ДОДАТКОВІ КНОПКИ ---
+  // Копіювання останньої відповіді
+  copyBtn.addEventListener('click', () => {
+    if (!lastResponseText) return;
+    navigator.clipboard.writeText(lastResponseText);
+    copyBtn.textContent = 'скопійовано';
+    setTimeout(() => copyBtn.textContent = 'копіювати останнє', 2000);
+  });
+
+  // Очищення історії
+  clearBtn.addEventListener('click', () => {
+    if (confirm('Очистити всю історію повідомлень?')) {
+      chatHistory = [];
+      localStorage.removeItem('proxy_chat_history');
+      renderHistory();
+    }
   });
 </script>
 </body>
