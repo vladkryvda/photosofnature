@@ -319,7 +319,7 @@
 
     try {
       // Зверніть увагу: шлях змінено на ваш поточний проксі-ендпоінт /api/proxy
-      const res = await fetch('/api/proxy', {
+      const res = await fetch('https://photosofnature.enotik6665.workers.dev/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input, model: currentModel })
