@@ -4,42 +4,38 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Proxy</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;800&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0a0a0f;
-      --surface: #111118;
-      --border: #1e1e2e;
-      --accent-claude: #cc785c;
-      --accent-gemini: #4a9eff;
-      --accent-grok: #a259ff;
+      --bg: #000000;
+      --surface: rgba(10, 10, 15, 0.6);
+      --border: rgba(255, 255, 255, 0.08);
+      --accent: #4a9eff;
       --text: #e8e8f0;
-      --muted: #555570;
-      --active-color: var(--accent-claude);
+      --muted: #555565;
     }
 
     body {
-      font-family: 'Syne', sans-serif;
+      font-family: 'JetBrains Mono', monospace;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
-      padding: 40px 20px;
+      padding: 20px;
+      overflow-x: hidden;
     }
 
-    /* Фонова сітка */
-    body::before {
-      content: '';
+    /* Анімація зірок на Canvas */
+    canvas {
       position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-      background-size: 60px 60px;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       pointer-events: none;
       z-index: 0;
     }
@@ -48,200 +44,49 @@
       position: relative;
       z-index: 1;
       width: 100%;
-      max-width: 780px;
+      max-width: 750px;
       display: flex;
       flex-direction: column;
-      gap: 28px;
-    }
-
-    /* Заголовок */
-    header {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    h1 {
-      font-size: 2.2rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1;
-    }
-
-    h1 span {
-      color: var(--active-color);
-      transition: color 0.4s;
-    }
-
-    .subtitle {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--muted);
-      letter-spacing: 0.08em;
-    }
-
-    /* Вибір моделі */
-    .model-selector {
-      display: flex;
-      gap: 10px;
-    }
-
-    .model-btn {
-      flex: 1;
-      padding: 12px 16px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--muted);
-      font-family: 'Syne', sans-serif;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.25s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      justify-content: center;
-    }
-
-    .model-btn:hover {
-      color: var(--text);
-      border-color: #333350;
-    }
-
-    .model-btn.active[data-model="claude"] {
-      border-color: var(--accent-claude);
-      color: var(--accent-claude);
-      background: rgba(204,120,92,0.08);
-    }
-    .model-btn.active[data-model="gemini"] {
-      border-color: var(--accent-gemini);
-      color: var(--accent-gemini);
-      background: rgba(74,158,255,0.08);
-    }
-    .model-btn.active[data-model="grok"] {
-      border-color: var(--accent-grok);
-      color: var(--accent-grok);
-      background: rgba(162,89,255,0.08);
-    }
-
-    .model-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-
-    /* Поле вводу */
-    .input-block {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--muted);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
+      gap: 20px;
+      backdrop-filter: blur(8px);
     }
 
     textarea {
       width: 100%;
-      min-height: 140px;
+      min-height: 120px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
       color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.875rem;
+      font-family: inherit;
+      font-size: 0.9rem;
       line-height: 1.6;
-      padding: 16px;
+      padding: 18px;
       resize: vertical;
       outline: none;
-      transition: border-color 0.25s;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     textarea:focus {
-      border-color: var(--active-color);
+      border-color: rgba(74, 158, 255, 0.4);
+      box-shadow: 0 0 20px rgba(74, 158, 255, 0.05);
     }
 
     textarea::placeholder {
       color: var(--muted);
     }
 
-    /* Кнопка */
-    .send-btn {
-      align-self: flex-end;
-      padding: 13px 32px;
-      background: var(--active-color);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      font-family: 'Syne', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.25s;
-      letter-spacing: 0.02em;
-    }
-
-    .send-btn:hover:not(:disabled) {
-      filter: brightness(1.15);
-      transform: translateY(-1px);
-    }
-
-    .send-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    /* Поле відповіді */
-    .response-block {
+    .controls {
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .response-header {
-      display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
     }
 
-    .response-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      min-height: 180px;
-      padding: 20px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      line-height: 1.7;
-      color: var(--text);
-      white-space: pre-wrap;
-      word-break: break-word;
-      position: relative;
-      transition: border-color 0.4s;
-    }
-
-    .response-box.active {
-      border-color: var(--active-color);
-    }
-
-    .placeholder-text {
-      color: var(--muted);
-      font-style: italic;
-    }
-
-    /* Лоадер */
     .loader {
       display: none;
       align-items: center;
-      gap: 6px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
+      gap: 8px;
+      font-size: 0.8rem;
       color: var(--muted);
     }
 
@@ -249,125 +94,206 @@
 
     .loader-dots span {
       display: inline-block;
-      width: 5px;
-      height: 5px;
+      width: 4px;
+      height: 4px;
       border-radius: 50%;
-      background: var(--active-color);
-      animation: bounce 1.2s infinite ease-in-out;
+      background: var(--accent);
+      animation: bounce 1.4s infinite ease-in-out both;
     }
     .loader-dots span:nth-child(2) { animation-delay: 0.2s; }
     .loader-dots span:nth-child(3) { animation-delay: 0.4s; }
 
     @keyframes bounce {
-      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-      40% { transform: translateY(-5px); opacity: 1; }
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.3; }
+      40% { transform: scale(1.2); opacity: 1; }
     }
 
-    /* Помилка */
+    .send-btn {
+      padding: 10px 24px;
+      background: none;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(74, 158, 255, 0.03);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .response-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-height: 150px;
+      padding: 20px;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      transition: border-color 0.4s;
+    }
+
+    .response-box.active {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .placeholder-text {
+      color: var(--muted);
+    }
+
     .error-msg {
       display: none;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       color: #ff6b6b;
-      padding: 12px 16px;
-      background: rgba(255,107,107,0.08);
-      border: 1px solid rgba(255,107,107,0.2);
+      padding: 14px;
+      background: rgba(255, 107, 107, 0.03);
+      border: 1px solid rgba(255, 107, 107, 0.1);
       border-radius: 8px;
     }
     .error-msg.visible { display: block; }
 
-    /* Копіювати */
     .copy-btn {
+      align-self: flex-end;
       background: none;
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      border: none;
       color: var(--muted);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      padding: 5px 10px;
+      font-family: inherit;
+      font-size: 0.75rem;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: color 0.2s;
+      padding: 4px 0;
+      width: fit-content;
     }
-    .copy-btn:hover { color: var(--text); border-color: #333350; }
-
-    /* Активний колір по моделі */
-    body[data-model="claude"] { --active-color: var(--accent-claude); }
-    body[data-model="gemini"] { --active-color: var(--accent-gemini); }
-    body[data-model="grok"]   { --active-color: var(--accent-grok); }
+    .copy-btn:hover { color: var(--text); }
   </style>
 </head>
-<body data-model="claude">
+<body>
+
+<canvas id="stars"></canvas>
+
 <div class="container">
 
-  <header>
-    <h1>AI <span id="model-name">Claude</span></h1>
-    <p class="subtitle">// proxy interface · vercel + api</p>
-  </header>
-
-  <!-- Вибір моделі -->
-  <div class="model-selector">
-    <button class="model-btn active" data-model="claude">
-      <span class="model-dot"></span> Claude
-    </button>
-    <button class="model-btn" data-model="gemini">
-      <span class="model-dot"></span> Gemini
-    </button>
-    <button class="model-btn" data-model="grok">
-      <span class="model-dot"></span> Grok
-    </button>
-  </div>
-
-  <!-- Поле вводу -->
-  <div class="input-block">
-    <label>// твій запит</label>
-    <textarea id="user-input" placeholder="Напиши що завгодно..."></textarea>
-    <button class="send-btn" id="send-btn">Надіслати →</button>
+  <!-- Ввід -->
+  <textarea id="user-input" placeholder="Запит..."></textarea>
+  
+  <div class="controls">
+    <div class="loader" id="loader">
+      <div class="loader-dots"><span></span><span></span><span></span></div>
+    </div>
+    <button class="send-btn" id="send-btn">Надіслати</button>
   </div>
 
   <!-- Помилка -->
   <div class="error-msg" id="error-msg"></div>
 
-  <!-- Поле відповіді -->
-  <div class="response-block">
-    <div class="response-header">
-      <label>// відповідь</label>
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="loader" id="loader">
-          <div class="loader-dots">
-            <span></span><span></span><span></span>
-          </div>
-          думаю...
-        </div>
-        <button class="copy-btn" id="copy-btn">копіювати</button>
-      </div>
-    </div>
-    <div class="response-box" id="response-box">
-      <span class="placeholder-text" id="placeholder">Тут зʼявиться відповідь...</span>
-    </div>
+  <!-- Відповідь -->
+  <div class="response-box" id="response-box">
+    <span class="placeholder-text" id="placeholder">Чекаю...</span>
   </div>
+  
+  <button class="copy-btn" id="copy-btn" style="display: none;">копіювати</button>
 
 </div>
 
 <script>
-  let currentModel = 'claude';
-  let responseText = '';
+  // --- Ефект зірок (Canvas) ---
+  const canvas = document.getElementById('stars');
+  const ctx = canvas.getContext('2d');
 
-  // --- Вибір моделі ---
-  document.querySelectorAll('.model-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentModel = btn.dataset.model;
-      document.body.dataset.model = currentModel;
-      document.getElementById('model-name').textContent =
-        currentModel.charAt(0).toUpperCase() + currentModel.slice(1);
+  let width = canvas.width = window.innerWidth;
+  let height = canvas.height = window.innerHeight;
+
+  const numStars = 120;
+  const stars = [];
+  let mouse = { x: null, y: null, radius: 70 };
+
+  for (let i = 0; i < numStars; i++) {
+    stars.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      size: Math.random() * 1.5,
+      baseX: 0,
+      baseY: 0,
+      density: (Math.random() * 15) + 5,
+      speed: (Math.random() * 0.05) + 0.01
     });
+  }
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
   });
 
-  // --- Надіслати запит ---
+  window.addEventListener('mousemove', (e) => {
+    mouse.x = e.x;
+    mouse.y = e.y;
+  });
+
+  window.addEventListener('mouseleave', () => {
+    mouse.x = null;
+    mouse.y = null;
+  });
+
+  function animateStars() {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+
+    for (let i = 0; i < stars.length; i++) {
+      let star = stars[i];
+      
+      // Повільний рух вгору
+      star.y -= star.speed;
+      if (star.y < 0) {
+        star.y = height;
+        star.x = Math.random() * width;
+      }
+
+      // Інтерактив з мишкою (зірки злегка тікають)
+      if (mouse.x !== null && mouse.y !== null) {
+        let dx = mouse.x - star.x;
+        let dy = mouse.y - star.y;
+        let distance = Math.hypot(dx, dy);
+        
+        if (distance < mouse.radius) {
+          let force = (mouse.radius - distance) / mouse.radius;
+          let directionX = dx / distance;
+          let directionY = dy / distance;
+          
+          star.x -= directionX * force * star.density * 0.2;
+          star.y -= directionY * force * star.density * 0.2;
+        }
+      }
+
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    requestAnimationFrame(animateStars);
+  }
+  animateStars();
+
+
+  // --- Логіка запитів (Фіксовано під Gemini) ---
+  let responseText = '';
+  const currentModel = 'gemini-3-flash'; // Жорстко зафіксована модель Gemini
+
   document.getElementById('send-btn').addEventListener('click', sendRequest);
   document.getElementById('user-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) sendRequest();
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendRequest();
+    }
   });
 
   async function sendRequest() {
@@ -379,17 +305,20 @@
     const responseBox = document.getElementById('response-box');
     const placeholder = document.getElementById('placeholder');
     const errorMsg = document.getElementById('error-msg');
+    const copyBtn = document.getElementById('copy-btn');
 
-    // Скидаємо стан
     btn.disabled = true;
     loader.classList.add('visible');
     errorMsg.classList.remove('visible');
     responseBox.classList.add('active');
-    placeholder && placeholder.remove();
+    copyBtn.style.display = 'none';
+    if (placeholder) placeholder.style.display = 'none';
+    
     responseBox.textContent = '';
     responseText = '';
 
     try {
+      // Зверніть увагу: шлях змінено на ваш поточний проксі-ендпоінт /api/proxy
       const res = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -398,16 +327,18 @@
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || 'Щось пішло не так');
+      if (!res.ok) throw new Error(data.error || 'Помилка отримання відповіді');
 
-      responseText = data.reply;
+      // Обробка ключа reply або text залежно від архітектури вашого бекенду
+      responseText = data.reply || data.text || '';
       responseBox.textContent = responseText;
+      if (responseText) copyBtn.style.display = 'block';
 
     } catch (err) {
-      errorMsg.textContent = '❌ Помилка: ' + err.message;
+      errorMsg.textContent = 'Помилка: ' + err.message;
       errorMsg.classList.add('visible');
-      responseBox.textContent = '';
       responseBox.classList.remove('active');
+      if (placeholder) placeholder.style.display = 'block';
     } finally {
       btn.disabled = false;
       loader.classList.remove('visible');
@@ -419,7 +350,7 @@
     if (!responseText) return;
     navigator.clipboard.writeText(responseText);
     const btn = document.getElementById('copy-btn');
-    btn.textContent = 'скопійовано ✓';
+    btn.textContent = 'скопійовано';
     setTimeout(() => btn.textContent = 'копіювати', 2000);
   });
 </script>
